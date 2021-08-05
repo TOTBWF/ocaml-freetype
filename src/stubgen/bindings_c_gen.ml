@@ -1,8 +1,9 @@
 let c_headers =
   String.concat "\n" [
-      "#include <freetype2/ft2build.h>";
-      "#include FT_FREETYPE_H";
-    ]
+    "#include <freetype2/ft2build.h>";
+    "#include FT_FREETYPE_H";
+    "#include FT_GLYPH_H"
+  ]
 
 let main () =
   let stubs_out = open_out "bindings_stubs_gen.c" in

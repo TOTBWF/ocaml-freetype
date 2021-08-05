@@ -20,8 +20,8 @@ let () =
   let _ = Face.set_char_size face 0L (Int64.mul 16L 64L) 300 300 in
   let glyph_index = Face.get_char_index face (Int64.of_int @@ Char.code 'a') in
   let _ = Face.load_glyph face glyph_index [] in
-  let _ = Glyph.render (Face.glyph face) Normal in
-  let bitmap = Glyph.bitmap (Face.glyph face) in
+  let glyph = Face.glyph face in
+  let bitmap = Glyph.to_bitmap glyph Normal in
   write_ppm "./test.ppm" (Bitmap.width bitmap) (Bitmap.height bitmap) (Bitmap.bytes bitmap);
   Face.close face;
   Library.close lib

@@ -5,6 +5,16 @@ sig
   val close : t -> unit
 end
 
+and RenderMode : sig
+  type t =
+    | Normal
+    | Light
+    | Mono
+    | Lcd
+    | LcdV
+    | Sdf
+end
+
 and Face :
 sig
   type t
@@ -35,22 +45,27 @@ sig
 
   val load_glyph : t -> int -> load_flag list -> unit
 
+  val glyphslot : t -> GlyphSlot.t
   val glyph : t -> Glyph.t
+end
+
+and GlyphSlot : sig
+  type t
+
+
+  val render : t -> RenderMode.t -> unit
+  val bitmap : t -> Bitmap.t
+
+  val get_glyph : t -> Glyph.t
 end
 
 and Glyph : sig
   type t
 
-  type render_mode =
-    | Normal
-    | Light
-    | Mono
-    | Lcd
-    | LcdV
-    | Sdf
+  val close : t -> unit
+  val copy : t -> t
 
-  val render : t -> render_mode -> unit
-  val bitmap : t -> Bitmap.t
+  val to_bitmap : t -> ?destroy:bool -> RenderMode.t -> Bitmap.t
 end
 
 and Bitmap : sig

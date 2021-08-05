@@ -9,7 +9,7 @@ let carray_to_bytes (carr : uchar carray) : bytes =
   Bytes.init (CArray.length carr) (fun ix -> Char.chr @@ UChar.to_int @@ CArray.get carr ix)
 
 module rec Library : sig
-  type t
+  type t = B.Library.t ptr
   val t : t typ
   val init : unit -> t
   val close : t -> unit
@@ -35,7 +35,7 @@ struct
 end
 
 and Face : sig
-  type t
+  type t = B.Face.t ptr
   val create : Library.t -> string -> int -> t
   val close : t -> unit
 
@@ -63,6 +63,7 @@ and Face : sig
 
   val load_glyph : t -> int -> load_flag list -> unit
 
+  val glyphslot : t -> GlyphSlot.t
   val glyph : t -> Glyph.t
 end =
 struct
@@ -148,14 +149,12 @@ struct
       Format.eprintf "[ERROR] load_glyph: 0x%x@." errno;
     ()
 
-  let glyph face = !@ (face |-> B.Face.glyph)
+  let glyphslot face = !@ (face |-> B.Face.glyph)
+  let glyph face = GlyphSlot.get_glyph (glyphslot face)
 end
 
-and Glyph : sig
-  type t
-  (* val t : t typ *)
-
-  type render_mode =
+and RenderMode : sig
+  type t =
     | Normal
     | Light
     | Mono
@@ -163,16 +162,11 @@ and Glyph : sig
     | LcdV
     | Sdf
 
-  val render : t -> render_mode -> unit
-  val bitmap : t -> Bitmap.t
+  val t : t typ
+  (* val to_int : t -> int *)
 end =
 struct
-  type t = B.GlyphSlot.t ptr
-  let t = ptr B.GlyphSlot.t
-
-  let freetype_render_glyph = foreign "FT_Render_Glyph" (t @-> int @-> returning int)
-
-  type render_mode =
+  type t =
     | Normal
     | Light
     | Mono
@@ -180,7 +174,7 @@ struct
     | LcdV
     | Sdf
 
-  let render_mode_to_int =
+  let to_int =
     function
     | Normal -> 0
     | Light -> 1
@@ -189,16 +183,87 @@ struct
     | LcdV -> 4
     | Sdf -> 5
 
+  let of_int =
+    function
+    | 0 -> Normal
+    | 1 -> Light
+    | 2 -> Mono
+    | 3 -> Lcd
+    | 4 -> LcdV
+    | 5 -> Sdf
+    | _ -> failwith "RenderMode.of_int: Unsupported RenderMode"
+
+  let t : t typ = view ~read:of_int ~write:to_int int
+end
+
+and GlyphSlot : sig
+  type t = B.GlyphSlot.t ptr
+  (* val t : t typ *)
+
+  val render : t -> RenderMode.t -> unit
+  val bitmap : t -> Bitmap.t
+
+  val get_glyph : t -> Glyph.t
+end =
+struct
+  type t = B.GlyphSlot.t ptr
+  let t = ptr B.GlyphSlot.t
+
+  let freetype_render_glyph = foreign "FT_Render_Glyph" (t @-> RenderMode.t @-> returning int)
+
   let render glyph_slot render_mode =
-    let _ = freetype_render_glyph glyph_slot (render_mode_to_int render_mode) in
+    let _ = freetype_render_glyph glyph_slot render_mode in
     ()
 
   let bitmap glyph_slot =
     !@ (glyph_slot |-> B.GlyphSlot.bitmap)
+
+  let freetype_get_glyph = foreign "FT_Get_Glyph" (t @-> ptr Glyph.t @-> returning int)
+
+  let get_glyph glyph_slot =
+    let glyph_ptr = allocate Glyph.t (from_voidp B.Glyph.t null) in
+    let _ = freetype_get_glyph glyph_slot glyph_ptr in
+    !@ glyph_ptr
+end
+
+and Glyph : sig
+  type t = B.Glyph.t ptr
+  val t : t typ
+
+  val close : t -> unit
+  val copy : t -> t
+
+  val to_bitmap : t -> ?destroy:bool -> RenderMode.t -> Bitmap.t
+end =
+struct
+  type t = B.Glyph.t ptr
+
+  let t = ptr B.Glyph.t
+
+  let freetype_glyph_close = foreign "FT_Done_Glyph" (t @-> returning void)
+
+  let close glyph =
+    freetype_glyph_close glyph
+
+  let freetype_glyph_copy = foreign "FT_Glyph_Copy" (t @-> (ptr t) @-> returning int)
+
+  let copy glyph =
+    let trg = allocate t (from_voidp B.Glyph.t null) in
+    let _ = freetype_glyph_copy glyph trg in
+    !@ trg
+
+  let freetype_glyph_to_bitmap = foreign "FT_Glyph_To_Bitmap" (ptr t @-> RenderMode.t @-> ptr B.Vector.t @-> bool @-> returning int)
+
+  let to_bitmap glyph ?(destroy = true)render_mode =
+    let glyph_ptr = allocate t glyph in
+    (* FIXME: Specify an origin! *)
+    let _ = freetype_glyph_to_bitmap glyph_ptr render_mode (from_voidp B.Vector.t null) destroy in
+    let bitmap_ptr = coerce (ptr t) (ptr (ptr B.BitmapGlyph.t)) glyph_ptr in
+    !@ (!@ bitmap_ptr |-> B.BitmapGlyph.bitmap)
 end
 
 and Bitmap : sig
-  type t
+  type t = B.Bitmap.t
 
   val height : t -> int
   val width : t -> int

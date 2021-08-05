@@ -105,6 +105,28 @@ module Stubs = functor (S : Cstubs_structs.TYPE) -> struct
     let () = S.seal t
   end
 
+  module Glyph = struct
+    type glyph_rec
+    type t = glyph_rec C.structure
+
+    let t : t S.typ = S.structure "FT_GlyphRec_"
+  end
+
+  module BitmapGlyph = struct
+    type bitmap_glyph_rec
+    type t = bitmap_glyph_rec C.structure
+
+    let t : t S.typ = S.structure "FT_BitmapGlyphRec_"
+
+    let root = S.(field t "root" Glyph.t)
+    let left = S.(field t "left" int)
+    let top = S.(field t "top" int)
+    let bitmap = S.(field t "bitmap" Bitmap.t)
+
+    let () = S.seal t
+  end
+
+
   module Face = struct
     type face_rec
     type t = face_rec C.structure
