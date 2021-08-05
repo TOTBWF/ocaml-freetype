@@ -1,33 +1,202 @@
-module Bindings = Bindings.Stubs(Bindings_stubs)
+module B = Bindings.Stubs(Bindings_stubs)
 
 open Ctypes
 open Foreign
+open Signed
+open Unsigned
 
-open Bindings
+let carray_to_bytes (carr : uchar carray) : bytes =
+  Bytes.init (CArray.length carr) (fun ix -> Char.chr @@ UChar.to_int @@ CArray.get carr ix)
 
-let freetype_library = ptr Library.t
-let freetype_face = ptr Face.t
-let freetype_glyph_slot = ptr GlyphSlot.t
+module rec Library : sig
+  type t
+  val t : t typ
+  val init : unit -> t
+end =
+struct
+  type t = B.Library.t ptr
 
-let freetype_init_library = foreign "FT_Init_FreeType" (ptr freetype_library @-> returning int)
-let freetype_new_face = foreign "FT_New_Face" (freetype_library @-> string @-> long @-> ptr freetype_face @-> returning int)
-let freetype_get_char_index = foreign "FT_Get_Char_Index" (freetype_face @-> ulong @-> returning uint)
-let freetype_set_char_size = foreign "FT_Set_Char_Size" (freetype_face @-> long @-> long @-> uint @-> uint @-> returning int)
+  let t = ptr B.Library.t
 
-(* Glyphs *)
-let freetype_load_glyph = foreign "FT_Load_Glyph" (freetype_face @-> uint @-> int32_t @-> returning int)
-let freetype_render_glyph = foreign "FT_Render_Glyph" (freetype_glyph_slot @-> int @-> returning int)
+  let freetype_init_library = foreign "FT_Init_FreeType" (ptr t @-> returning int)
+  let init () : t =
+    let ft_ptr = allocate t (from_voidp B.Library.t null) in
+    let errno = freetype_init_library ft_ptr in
+    if errno <> 0 then
+      Format.eprintf "[ERROR] init_library: %n@." errno;
+    !@ ft_ptr
+end
 
-let init_library () : Library.t ptr =
-  let ft_ptr = allocate freetype_library (from_voidp Library.t null) in
-  let errno = freetype_init_library ft_ptr in
-  if errno <> 0 then
-    Format.eprintf "[ERROR] init_library: %n@." errno;
-  !@ ft_ptr
+and Face : sig
+  type t
+  val create : Library.t -> string -> int -> t
 
-let new_face (lib : Library.t ptr) (path : string) (face_index : int) : Face.t ptr =
-  let face_ptr = allocate freetype_face (from_voidp Face.t null) in
-  let errno = freetype_new_face lib path (Signed.Long.of_int face_index) face_ptr in
-  if errno <> 0 then
-    Format.eprintf "[ERROR] new_face: %n@." errno;
-  !@ face_ptr
+  val set_char_size : t -> int64 -> int64 -> int -> int -> unit
+  val get_char_index : t -> int64 -> int
+
+  type load_flag =
+    | NoScale
+    | NoHinting
+    | Render
+    | NoBitmap
+    | VerticalLayout
+    | ForceAutoHint
+    | CropBitmap
+    | Pedantic
+    | IgnoreGlobalAdvanceWidth
+    | NoRecurse
+    | IgnoreTransform
+    | Monochrome
+    | LinearDesign
+    | NoAutoHint
+    | Color
+    | ComputeMetrics
+    | BitmapMetricsOnly
+
+  val load_glyph : t -> int -> load_flag list -> unit
+
+  val glyph : t -> Glyph.t
+end =
+struct
+  type t = B.Face.t ptr
+
+  let t = ptr B.Face.t
+
+  let freetype_new_face = foreign "FT_New_Face" (Library.t @-> string @-> long @-> ptr t @-> returning int)
+
+  let create lib path face_index : t =
+    let face_ptr = allocate t (from_voidp B.Face.t null) in
+    let errno = freetype_new_face lib path (Signed.Long.of_int face_index) face_ptr in
+    if errno <> 0 then
+      Format.eprintf "[ERROR] new_face: %n@." errno;
+    !@ face_ptr
+
+  let freetype_set_char_size = foreign "FT_Set_Char_Size" (t @-> long @-> long @-> uint @-> uint @-> returning int)
+
+  let set_char_size face width height hres vres =
+    let _ = freetype_set_char_size face (Long.of_int64 width) (Long.of_int64 height) (UInt.of_int hres) (UInt.of_int vres) in
+    ()
+
+  let freetype_get_char_index = foreign "FT_Get_Char_Index" (t @-> ulong @-> returning uint)
+
+  let get_char_index face charcode =
+    UInt.to_int @@ freetype_get_char_index face (ULong.of_int64 charcode)
+
+  type load_flag =
+    | NoScale
+    | NoHinting
+    | Render
+    | NoBitmap
+    | VerticalLayout
+    | ForceAutoHint
+    | CropBitmap
+    | Pedantic
+    | IgnoreGlobalAdvanceWidth
+    | NoRecurse
+    | IgnoreTransform
+    | Monochrome
+    | LinearDesign
+    | NoAutoHint
+    | Color
+    | ComputeMetrics
+    | BitmapMetricsOnly
+
+  let load_flag_shift =
+    function
+    | NoScale -> 1
+    | NoHinting -> 2
+    | Render -> 3
+    | NoBitmap -> 4
+    | VerticalLayout -> 5
+    | ForceAutoHint -> 6
+    | CropBitmap -> 7
+    | Pedantic -> 8
+    | IgnoreGlobalAdvanceWidth -> 9
+    | NoRecurse -> 10
+    | IgnoreTransform -> 11
+    | Monochrome -> 12
+    | LinearDesign -> 13
+    | NoAutoHint -> 15
+    | Color -> 20
+    | ComputeMetrics -> 21
+    | BitmapMetricsOnly -> 22
+
+  let load_flags_bits flags =
+    List.fold_left (fun bits flag -> Int32.logor bits (Int32.shift_left 1l (load_flag_shift flag))) (Int32.of_int 0) flags
+
+  let freetype_load_glyph = foreign "FT_Load_Glyph" (t @-> uint @-> int32_t @-> returning int)
+
+  let load_glyph face glyph_index load_flags =
+    let _ = freetype_load_glyph face (UInt.of_int glyph_index) (load_flags_bits load_flags) in
+    ()
+
+  let glyph face = !@ (face |-> B.Face.glyph)
+end
+
+and Glyph : sig
+  type t
+  (* val t : t typ *)
+
+  type render_mode =
+    | Normal
+    | Light
+    | Mono
+    | Lcd
+    | LcdV
+    | Sdf
+
+  val render : t -> render_mode -> unit
+  val bitmap : t -> Bitmap.t
+end =
+struct
+  type t = B.GlyphSlot.t ptr
+  let t = ptr B.GlyphSlot.t
+
+  let freetype_render_glyph = foreign "FT_Render_Glyph" (t @-> int @-> returning int)
+
+  type render_mode =
+    | Normal
+    | Light
+    | Mono
+    | Lcd
+    | LcdV
+    | Sdf
+
+  let render_mode_to_int =
+    function
+    | Normal -> 0
+    | Light -> 1
+    | Mono -> 2
+    | Lcd -> 3
+    | LcdV -> 4
+    | Sdf -> 5
+
+  let render glyph_slot render_mode =
+    let _ = freetype_render_glyph glyph_slot (render_mode_to_int render_mode) in
+    ()
+
+  let bitmap glyph_slot =
+    !@ (glyph_slot |-> B.GlyphSlot.bitmap)
+end
+
+and Bitmap : sig
+  type t
+
+  val height : t -> int
+  val width : t -> int
+  val pitch : t -> int
+
+  val bytes : t -> bytes
+end =
+struct
+  type t = B.Bitmap.t
+
+  let height bitmap = getf bitmap B.Bitmap.rows
+  let width bitmap = getf bitmap B.Bitmap.width
+
+  let pitch bitmap = getf bitmap B.Bitmap.pitch
+
+  let bytes bitmap =
+    let buffer = getf bitmap B.Bitmap.buffer in
+    carray_to_bytes @@ CArray.from_ptr buffer (pitch bitmap * height bitmap)
+end
