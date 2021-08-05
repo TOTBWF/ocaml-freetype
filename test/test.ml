@@ -16,10 +16,9 @@ let write_ppm path width height bytes =
 
 let () =
   let lib = Library.init () in
-  let face = Face.create lib "/Users/reedmullanix/Library/Fonts/iosevka-fixed-thin.ttf" 0 in
+  let face = Face.create lib "./fonts/noto-mono/NotoMono-Regular.ttf" 0 in
   let _ = Face.set_char_size face 0L (Int64.mul 16L 64L) 300 300 in
-  (* 0x2115 is the character code for ℕ *)
-  let glyph_index = Face.get_char_index face (Int64.of_int 0x2115) in
+  let glyph_index = Face.get_char_index face (Int64.of_int @@ Char.code 'a') in
   let _ = Face.load_glyph face glyph_index [] in
   let _ = Glyph.render (Face.glyph face) Normal in
   let bitmap = Glyph.bitmap (Face.glyph face) in

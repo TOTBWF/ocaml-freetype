@@ -4,5 +4,6 @@
 
 (rule
   (alias runtest)
-  (deps (universe))
+  (deps (universe)
+        (glob_files ./fonts/**/*))
   (action (run ./test.exe)))
