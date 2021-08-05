@@ -12,6 +12,7 @@ module rec Library : sig
   type t
   val t : t typ
   val init : unit -> t
+  val close : t -> unit
 end =
 struct
   type t = B.Library.t ptr
@@ -25,11 +26,18 @@ struct
     if errno <> 0 then
       Format.eprintf "[ERROR] init_library: %n@." errno;
     !@ ft_ptr
+
+  let freetype_done_library = foreign "FT_Done_FreeType" (t @-> returning int)
+
+  let close lib =
+    let _ = freetype_done_library lib in
+    ()
 end
 
 and Face : sig
   type t
   val create : Library.t -> string -> int -> t
+  val close : t -> unit
 
   val set_char_size : t -> int64 -> int64 -> int -> int -> unit
   val get_char_index : t -> int64 -> int
@@ -68,13 +76,21 @@ struct
     let face_ptr = allocate t (from_voidp B.Face.t null) in
     let errno = freetype_new_face lib path (Signed.Long.of_int face_index) face_ptr in
     if errno <> 0 then
-      Format.eprintf "[ERROR] new_face: %n@." errno;
+      Format.eprintf "[ERROR] new_face: 0x%x@." errno;
     !@ face_ptr
+
+  let freetype_done_face = foreign "FT_Done_Face" (t @-> returning int)
+
+  let close face =
+    let _ = freetype_done_face face in
+    ()
 
   let freetype_set_char_size = foreign "FT_Set_Char_Size" (t @-> long @-> long @-> uint @-> uint @-> returning int)
 
   let set_char_size face width height hres vres =
-    let _ = freetype_set_char_size face (Long.of_int64 width) (Long.of_int64 height) (UInt.of_int hres) (UInt.of_int vres) in
+    let errno = freetype_set_char_size face (Long.of_int64 width) (Long.of_int64 height) (UInt.of_int hres) (UInt.of_int vres) in
+    if errno <> 0 then
+      Format.eprintf "[ERROR] set_char_size: 0x%x@." errno;
     ()
 
   let freetype_get_char_index = foreign "FT_Get_Char_Index" (t @-> ulong @-> returning uint)
@@ -127,7 +143,9 @@ struct
   let freetype_load_glyph = foreign "FT_Load_Glyph" (t @-> uint @-> int32_t @-> returning int)
 
   let load_glyph face glyph_index load_flags =
-    let _ = freetype_load_glyph face (UInt.of_int glyph_index) (load_flags_bits load_flags) in
+    let errno = freetype_load_glyph face (UInt.of_int glyph_index) (load_flags_bits load_flags) in
+    if errno <> 0 then
+      Format.eprintf "[ERROR] load_glyph: 0x%x@." errno;
     ()
 
   let glyph face = !@ (face |-> B.Face.glyph)

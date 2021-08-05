@@ -2,12 +2,14 @@ module rec Library :
 sig
   type t
   val init : unit -> t
+  val close : t -> unit
 end
 
 and Face :
 sig
   type t
   val create : Library.t -> string -> int -> t
+  val close : t -> unit
 
   val set_char_size : t -> int64 -> int64 -> int -> int -> unit
   val get_char_index : t -> int64 -> int
