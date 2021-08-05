@@ -1,0 +1,23 @@
+opam-version: "2.0"
+name: "freetype"
+version: "0.0"
+maintainer: "Reed Mullanix <rmullani@umn.edu>"
+authors: ["Reed Mullanix"]
+# homepage: "https://github.com/RedPRL/cooltt"
+# bug-reports: "https://github.com/RedPRL/cooltt/issues"
+# dev-repo: "git+https://github.com/RedPRL/cooltt.git"
+synopsis: "Bindings to the FreeType library"
+# FIXME: Figure out licences
+# license: "Apache-2.0"
+depends: [
+  "dune" {>= "2.0"}
+  "ocaml" {>= "4.10.0"}
+  "ctypes" {>= "0.19"}
+  "ctypes-foreign" {>= "0.18"}
+  "conf-freetype"
+]
+build: [
+  ["dune" "build" "-p" name "-j" jobs]
+  ["dune" "build" "-p" name "-j" jobs "@runtest"] {with-test}
+  ["dune" "build" "-p" name "-j" jobs "@doc"] {with-doc}
+]

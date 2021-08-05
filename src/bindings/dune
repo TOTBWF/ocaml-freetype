@@ -1,0 +1,5 @@
+(library
+ (name bindings)
+ (synopsis "Ctypes bindings that describe the lib FFI")
+ (libraries ctypes.stubs ctypes)
+ (public_name ocaml_freetype.bindings))

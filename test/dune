@@ -1,0 +1,8 @@
+(executables
+ (names test)
+ (libraries ocaml_freetype.bindings ocaml_freetype.freetype))
+
+(rule
+  (alias runtest)
+  (deps (universe))
+  (action (run ./test.exe)))

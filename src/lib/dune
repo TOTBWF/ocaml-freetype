@@ -1,0 +1,11 @@
+(library
+ (name FreeType)
+ (libraries bindings ctypes.stubs ctypes.foreign ctypes integers)
+ (flags
+   (:standard -cclib -lfreetype -w -9-27))
+ (public_name ocaml_freetype.freetype))
+
+(rule
+  (targets bindings_stubs.ml)
+  (deps ../stubgen/bindings_stubs_gen.exe)
+  (action (with-stdout-to %{targets} (run %{deps} -ml))))
