@@ -65,7 +65,15 @@ and Glyph : sig
   val close : t -> unit
   val copy : t -> t
 
-  val to_bitmap : t -> ?destroy:bool -> RenderMode.t -> Bitmap.t
+  val to_bitmap : t -> ?destroy:bool -> RenderMode.t -> BitmapGlyph.t
+end
+
+and BitmapGlyph : sig
+  type t
+
+  val left : t -> int
+  val top : t -> int
+  val bitmap : t -> Bitmap.t
 end
 
 and Bitmap : sig

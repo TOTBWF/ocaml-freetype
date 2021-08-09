@@ -233,7 +233,7 @@ and Glyph : sig
   val close : t -> unit
   val copy : t -> t
 
-  val to_bitmap : t -> ?destroy:bool -> RenderMode.t -> Bitmap.t
+  val to_bitmap : t -> ?destroy:bool -> RenderMode.t -> BitmapGlyph.t
 end =
 struct
   type t = B.Glyph.t ptr
@@ -254,12 +254,27 @@ struct
 
   let freetype_glyph_to_bitmap = foreign "FT_Glyph_To_Bitmap" (ptr t @-> RenderMode.t @-> ptr B.Vector.t @-> bool @-> returning int)
 
-  let to_bitmap glyph ?(destroy = true)render_mode =
+  let to_bitmap glyph ?(destroy = true) render_mode =
     let glyph_ptr = allocate t glyph in
     (* FIXME: Specify an origin! *)
     let _ = freetype_glyph_to_bitmap glyph_ptr render_mode (from_voidp B.Vector.t null) destroy in
     let bitmap_ptr = coerce (ptr t) (ptr (ptr B.BitmapGlyph.t)) glyph_ptr in
-    !@ (!@ bitmap_ptr |-> B.BitmapGlyph.bitmap)
+    !@ bitmap_ptr
+end
+
+and BitmapGlyph : sig
+  type t = B.BitmapGlyph.t ptr
+
+  val left : t -> int
+  val top : t -> int
+  val bitmap : t -> Bitmap.t
+end =
+struct
+  type t = B.BitmapGlyph.t ptr
+
+  let left bg = !@ (bg |-> B.BitmapGlyph.left)
+  let top bg = !@ (bg |-> B.BitmapGlyph.top)
+  let bitmap bg = !@ (bg |-> B.BitmapGlyph.bitmap)
 end
 
 and Bitmap : sig

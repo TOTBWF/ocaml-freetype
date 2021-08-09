@@ -21,7 +21,7 @@ let () =
   let glyph_index = Face.get_char_index face (Int64.of_int @@ Char.code 'a') in
   let _ = Face.load_glyph face glyph_index [] in
   let glyph = Face.glyph face in
-  let bitmap = Glyph.to_bitmap glyph Normal in
+  let bitmap = BitmapGlyph.bitmap @@ Glyph.to_bitmap glyph Normal in
   write_ppm "./test.ppm" (Bitmap.width bitmap) (Bitmap.height bitmap) (Bitmap.bytes bitmap);
   Face.close face;
   Library.close lib
