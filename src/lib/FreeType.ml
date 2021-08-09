@@ -285,6 +285,7 @@ and Bitmap : sig
   val pitch : t -> int
 
   val bytes : t -> bytes
+  val byte_array : t -> (int, Bigarray.int8_unsigned_elt, Bigarray.c_layout) Bigarray.Array1.t
 end =
 struct
   type t = B.Bitmap.t
@@ -297,4 +298,8 @@ struct
   let bytes bitmap =
     let buffer = getf bitmap B.Bitmap.buffer in
     carray_to_bytes @@ CArray.from_ptr buffer (pitch bitmap * height bitmap)
+
+  let byte_array bitmap =
+    let buffer = coerce (ptr uchar) (ptr int) @@ getf bitmap B.Bitmap.buffer in
+    bigarray_of_ptr array1 (pitch bitmap * height bitmap) Bigarray.int8_unsigned buffer
 end

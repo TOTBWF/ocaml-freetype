@@ -84,4 +84,5 @@ and Bitmap : sig
   val pitch : t -> int
 
   val bytes : t -> bytes
+  val byte_array : t -> (int, Bigarray.int8_unsigned_elt, Bigarray.c_layout) Bigarray.Array1.t
 end
