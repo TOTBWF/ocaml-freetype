@@ -99,6 +99,8 @@ module Stubs = functor (S : Cstubs_structs.TYPE) -> struct
     type glyph_slot_rec
     type t = glyph_slot_rec C.structure
     let t : t S.typ = S.structure "FT_GlyphSlotRec_"
+
+    let advance = S.(field t "advance" (Vector.t))
     let bitmap = S.(field t "bitmap" (Bitmap.t))
     let bitmap_left = S.(field t "bitmap_left" int)
     let bitmap_top = S.(field t "bitmap_top" int)

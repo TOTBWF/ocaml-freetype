@@ -8,6 +8,19 @@ open Unsigned
 let carray_to_bytes (carr : uchar carray) : bytes =
   Bytes.init (CArray.length carr) (fun ix -> Char.chr @@ UChar.to_int @@ CArray.get carr ix)
 
+module Vector : sig
+  type t = B.Vector.t
+
+  val x : t -> int64
+  val y : t -> int64
+end =
+struct
+  type t = B.Vector.t
+
+  let x v = Long.to_int64 @@ getf v B.Vector.x
+  let y v = Long.to_int64 @@ getf v B.Vector.y
+end
+
 module rec Library : sig
   type t = B.Library.t ptr
   val t : t typ
@@ -200,6 +213,8 @@ and GlyphSlot : sig
   type t = B.GlyphSlot.t ptr
   (* val t : t typ *)
 
+  val advance : t -> Vector.t
+
   val render : t -> RenderMode.t -> unit
   val bitmap : t -> Bitmap.t
 
@@ -208,6 +223,9 @@ end =
 struct
   type t = B.GlyphSlot.t ptr
   let t = ptr B.GlyphSlot.t
+
+  let advance glyph_slot =
+    !@ (glyph_slot |-> B.GlyphSlot.advance)
 
   let freetype_render_glyph = foreign "FT_Render_Glyph" (t @-> RenderMode.t @-> returning int)
 

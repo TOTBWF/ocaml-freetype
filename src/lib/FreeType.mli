@@ -1,3 +1,10 @@
+module Vector : sig
+  type t
+
+  val x : t -> int64
+  val y : t -> int64
+end
+
 module rec Library :
 sig
   type t
@@ -52,6 +59,7 @@ end
 and GlyphSlot : sig
   type t
 
+  val advance : t -> Vector.t
 
   val render : t -> RenderMode.t -> unit
   val bitmap : t -> Bitmap.t
