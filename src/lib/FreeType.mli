@@ -60,9 +60,12 @@ and GlyphSlot : sig
   type t
 
   val advance : t -> Vector.t
+  val bitmap : t -> Bitmap.t
+
+  val bitmap_left : t -> int
+  val bitmap_top : t -> int
 
   val render : t -> RenderMode.t -> unit
-  val bitmap : t -> Bitmap.t
 
   val get_glyph : t -> Glyph.t
 end

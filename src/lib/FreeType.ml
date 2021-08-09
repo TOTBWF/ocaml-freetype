@@ -215,8 +215,12 @@ and GlyphSlot : sig
 
   val advance : t -> Vector.t
 
-  val render : t -> RenderMode.t -> unit
   val bitmap : t -> Bitmap.t
+
+  val bitmap_left : t -> int
+  val bitmap_top : t -> int
+
+  val render : t -> RenderMode.t -> unit
 
   val get_glyph : t -> Glyph.t
 end =
@@ -227,14 +231,20 @@ struct
   let advance glyph_slot =
     !@ (glyph_slot |-> B.GlyphSlot.advance)
 
+  let bitmap glyph_slot =
+    !@ (glyph_slot |-> B.GlyphSlot.bitmap)
+
+  let bitmap_left glyph_slot =
+    !@ (glyph_slot |-> B.GlyphSlot.bitmap_left)
+
+  let bitmap_top glyph_slot =
+    !@ (glyph_slot |-> B.GlyphSlot.bitmap_top)
+
   let freetype_render_glyph = foreign "FT_Render_Glyph" (t @-> RenderMode.t @-> returning int)
 
   let render glyph_slot render_mode =
     let _ = freetype_render_glyph glyph_slot render_mode in
     ()
-
-  let bitmap glyph_slot =
-    !@ (glyph_slot |-> B.GlyphSlot.bitmap)
 
   let freetype_get_glyph = foreign "FT_Get_Glyph" (t @-> ptr Glyph.t @-> returning int)
 
